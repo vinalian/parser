@@ -73,5 +73,38 @@ class User:
         self.cur.execute(f"SELECT AVG(price) FROM archive WHERE brand = %s AND model =%s", (brand, model))
         return self.cur.fetchone()[0]
 
+    def add_sub(self, user_id, sub_status):
+        self.cur.execute(f"SELECT sub_status FROM users WHERE user_id = {user_id}")
+        sub_time = int(self.cur.fetchone()[0])
+        if sub_time != -1:
+            self.cur.execute(f"UPDATE users SET sub_status = {str(sub_status+sub_time)} WHERE user_id = {user_id}")
+            self.con.commit()
+        else:
+            self.cur.execute(f"UPDATE users SET sub_status = {str(sub_status+sub_time+1)} WHERE user_id = {user_id}")
+            self.con.commit()
 
+    def get_malling_price(self, user_id):
+        self.cur.execute(f"SELECT mailing_price FROM users WHERE user_id = {user_id}")
+        return self.cur.fetchone()[0]
 
+    def update_malling_price(self, user_id, price):
+        self.cur.execute(f"UPDATE users SET mailing_price = {price} WHERE user_id={user_id}")
+        self.con.commit()
+
+    def get_mailing_brand(self, user_id):
+        self.cur.execute(f"SELECT mailing_brand FROM users WHERE user_id = {user_id}")
+        return self.cur.fetchone()[0]
+
+    def delete_mailing_brand(self, user_id, brand):
+        self.cur.execute(f"SELECT mailing_brand FROM users WHERE user_id = {user_id}")
+        data = self.cur.fetchone()[0]
+        new_data = data.replace(f"{brand}*", '')
+        self.cur.execute(f"UPDATE users SET mailing_brand = '{new_data}' WHERE user_id = {user_id}")
+        self.con.commit()
+
+    def add_to_mailing(self, user_id, brand):
+        self.cur.execute(f"SELECT mailing_brand FROM users WHERE user_id = {user_id}")
+        data = self.cur.fetchone()[0]
+        new_data = data + f"{brand}*"
+        self.cur.execute(f"UPDATE users SET mailing_brand = '{new_data}' WHERE user_id = {user_id}")
+        self.con.commit()

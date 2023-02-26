@@ -17,6 +17,18 @@ class Kufar_choose(CallbackData, prefix='k'):
 class Sub_choose(CallbackData, prefix='s'):
     action: str
     time: str
+    price: int
+
+
+class Confirm_bank_transfer(CallbackData, prefix='c'):
+    time: str
+    action: str
+    id: int
+
+
+class Mailing_brand(CallbackData, prefix='d'):
+    action: str
+    brand: str
 
 
 def main(user_status):
@@ -47,20 +59,85 @@ def sub_time(subscription):
     kb = InlineKeyboardBuilder()
     if subscription == '-1':
         kb.row(types.InlineKeyboardButton(text="🎁 1 день - 2р (Ознакомительная)",
-                                          callback_data=Sub_choose(action='subscribe', time='1').pack()))
+                                          callback_data=Sub_choose(action='subscribe', time='1', price=2).pack()))
     kb.row(types.InlineKeyboardButton(text="🔥 7 дней - 20 BYN",
-                                      callback_data=Sub_choose(action='subscribe', time='7').pack()))
+                                      callback_data=Sub_choose(action='subscribe', time='7', price=20).pack()))
     kb.row(types.InlineKeyboardButton(text="🔥 14 дней - 35 BYN",
-                                      callback_data=Sub_choose(action='subscribe', time='14').pack()))
+                                      callback_data=Sub_choose(action='subscribe', time='14', price=35).pack()))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
+    return kb.as_markup()
+
+
+def choose_payment_sub():
+    kb = InlineKeyboardBuilder()
+    kb.row(types.InlineKeyboardButton(text="Банковский перевод", callback_data='bank_transfer'))
+    kb.row(types.InlineKeyboardButton(text="Qiwi", callback_data='qiwi'))
+    kb.row(types.InlineKeyboardButton(text="Yoomoney", callback_data='Yoomoney'))
     kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
 def confirm_sub():
     kb = InlineKeyboardBuilder()
-    kb.row(types.InlineKeyboardButton(text="Банковский перевод", callback_data='bank_transfer'))
-    kb.row(types.InlineKeyboardButton(text="Qiwi", callback_data='qiwi'))
-    kb.row(types.InlineKeyboardButton(text="Yoomoney", callback_data='Yoomoney'))
+    kb.row(types.InlineKeyboardButton(text="Оплатил", callback_data='confirm_sub'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
+    return kb.as_markup()
+
+
+def confirm_bank_transfer(time, id):
+    kb = InlineKeyboardBuilder()
+    kb.row(types.InlineKeyboardButton(text="Подтвердить оплату",
+                                      callback_data=Confirm_bank_transfer(
+                                                                          action='BankTrC',
+                                                                          time=time,
+                                                                          id=id).pack()))
+    return kb.as_markup()
+
+
+def mailing_user_settings():
+    kb = InlineKeyboardBuilder()
+    kb.row(types.InlineKeyboardButton(text="Настройки цены", callback_data='mailing_price'))
+    kb.row(types.InlineKeyboardButton(text="Избранные бренды", callback_data='mailing_brand'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
+    return kb.as_markup()
+
+
+def mailing_brand(user_id):
+    con = DB.User()
+    data = con.get_mailing_brand(user_id)
+    kb = InlineKeyboardBuilder()
+    try:
+        for brand in data.split('*'):
+            kb.row(types.InlineKeyboardButton(text=f"{brand}",
+                                              callback_data=Mailing_brand(action='del', brand=brand).pack()))
+    except AttributeError:
+        pass
+    kb.row(types.InlineKeyboardButton(text="Добавить бренд", callback_data='add_to_favourites'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
+    return kb.as_markup()
+
+
+def add_to_favourites(user_id):
+    kufar_con = DB.Connection_kufar()
+    kufar_data = kufar_con.get_all_brands()
+    av_con = DB.Connection()
+    av_data = av_con.get_all_brands()
+    user_con = DB.User()
+    user_data = user_con.get_mailing_brand(user_id).split('*')
+    kb = InlineKeyboardBuilder()
+    full_data = []
+    for a, k in zip(av_data, kufar_data):
+        if a[0] not in full_data and a[0] not in user_data:
+            full_data.append(a[0])
+        if k[0] not in full_data and k[0] not in user_data:
+            full_data.append(k[0])
+    for z, data in enumerate(sorted(full_data)):
+        if z % 3 == 0:
+            kb.row(types.InlineKeyboardButton(text=data,
+                                              callback_data=Mailing_brand(action='add', brand=data).pack()))
+        else:
+            kb.add(types.InlineKeyboardButton(text=data,
+                                              callback_data=Mailing_brand(action='add', brand=data).pack()))
     kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
