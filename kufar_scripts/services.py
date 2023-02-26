@@ -21,10 +21,12 @@ def add_info_to_data_base(a):
     con = Connection()
     try:
         con.add_new_data(fullname, brand, model, info, year, range, price, locate, link, image, car_id)
+        print(f'[Kufar.by][INFO] {car_id} added to database')
     except:
-        pass
-
-
-
-
-
+        print(f'[Kufar.by][ERROR] {car_id} already exists in database')
+    try:
+        con.add_to_archive(brand, model, price, car_id)
+        print(f'[Kufar.by][INFO] {car_id} added to archive')
+    except:
+        print(f'[Kufar.by][ERROR] {car_id} already exists in archive')
+    print(f'[Kufar.by][INFO] Loading...')

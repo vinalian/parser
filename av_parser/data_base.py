@@ -14,7 +14,11 @@ class Connection:
             self.cur = self.con.cursor()
 
     def add_new_ann(self, brand, model, ann_id, category):
-        self.cur.execute("INSERT INTO av_info (brand, model, ann_id, category) VALUES (%s, %s, %s, %s)", (brand, model, ann_id, category))
+        self.cur.execute("INSERT INTO av_info (brand, model, ann_id, category) "
+                         "VALUES (%s, %s, %s, %s)", (brand, model, ann_id, category))
         self.con.commit()
 
-
+    def add_to_archive(self, brand, model, price, ann_id):
+        self.cur.execute(f"INSERT INTO archive (brand, model, price, ann_id) "
+                         f"VALUES (%s, %s, %s, %s)", (brand, model, price, ann_id))
+        self.con.commit()

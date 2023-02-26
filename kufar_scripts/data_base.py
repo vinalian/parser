@@ -26,3 +26,10 @@ class Connection:
         self.cur.execute(f"SELECT DISTINCT model FROM kufar_info WHERE brand = '{brand}'")
         return self.cur.fetchall()
 
+    def add_to_archive(self, brand, model, price, ann_id):
+        self.cur.execute(f"INSERT INTO archive (brand, model, price, ann_id) "
+                         f"VALUES (%s, %s, %s, %s)", (brand, model, price, ann_id))
+        self.con.commit()
+
+
+

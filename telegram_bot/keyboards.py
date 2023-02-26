@@ -14,14 +14,54 @@ class Kufar_choose(CallbackData, prefix='k'):
     data: str
 
 
+class Sub_choose(CallbackData, prefix='s'):
+    action: str
+    time: str
+
+
 def main(user_status):
     kb = InlineKeyboardBuilder()
-    kb.row(types.InlineKeyboardButton(text="av.by", callback_data='av.by'))
-    kb.row(types.InlineKeyboardButton(text="kufar", callback_data='kufar'))
+    kb.row(types.InlineKeyboardButton(text="🚗 av.by", callback_data='av.by'))
+    kb.row(types.InlineKeyboardButton(text="🚗 kufar", callback_data='kufar'))
+    kb.row(types.InlineKeyboardButton(text="📩 Личный кабинет", callback_data='user_menu'))
     if user_status == 0:
-        kb.row(types.InlineKeyboardButton(text="Включить рассылку", callback_data='on_mailing'))
+        kb.row(types.InlineKeyboardButton(text="✅ Рассылка выключена", callback_data='on_mailing'))
     else:
-        kb.row(types.InlineKeyboardButton(text="Отключить рассылку", callback_data='off_mailing'))
+        kb.row(types.InlineKeyboardButton(text="❌ Рассылка включена", callback_data='off_mailing'))
+    return kb.as_markup()
+
+
+def user_menu(subscription):
+    kb = InlineKeyboardBuilder()
+    if subscription == '0' or subscription == '-1':
+        kb.row(types.InlineKeyboardButton(text="💳 Купить подписку", callback_data='buy_sub'))
+    else:
+        kb.row(types.InlineKeyboardButton(text="💳 Продлить подписку", callback_data='buy_sub'))
+    kb.row(types.InlineKeyboardButton(text="⚙️ Настойки оповещений", callback_data='malling_settings'))
+    kb.row(types.InlineKeyboardButton(text="🌟 Избранные объявления", callback_data='favourites'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
+    return kb.as_markup()
+
+
+def sub_time(subscription):
+    kb = InlineKeyboardBuilder()
+    if subscription == '-1':
+        kb.row(types.InlineKeyboardButton(text="🎁 1 день - 2р (Ознакомительная)",
+                                          callback_data=Sub_choose(action='subscribe', time='1').pack()))
+    kb.row(types.InlineKeyboardButton(text="🔥 7 дней - 20 BYN",
+                                      callback_data=Sub_choose(action='subscribe', time='7').pack()))
+    kb.row(types.InlineKeyboardButton(text="🔥 14 дней - 35 BYN",
+                                      callback_data=Sub_choose(action='subscribe', time='14').pack()))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
+    return kb.as_markup()
+
+
+def confirm_sub():
+    kb = InlineKeyboardBuilder()
+    kb.row(types.InlineKeyboardButton(text="Банковский перевод", callback_data='bank_transfer'))
+    kb.row(types.InlineKeyboardButton(text="Qiwi", callback_data='qiwi'))
+    kb.row(types.InlineKeyboardButton(text="Yoomoney", callback_data='Yoomoney'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
@@ -37,7 +77,7 @@ def av_choose_brand():
         else:
             kb.add(types.InlineKeyboardButton(text=brand[0].title(), callback_data=Av_choose(action='av_brand',
                                                                                              data=brand[0]).pack()))
-    kb.row(types.InlineKeyboardButton(text="В меню", callback_data='backMain'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
@@ -54,19 +94,19 @@ def av_choose_model(brand):
             kb.add(
                 types.InlineKeyboardButton(text=model[0].title(), callback_data=Av_choose(action='av_model',
                                                                                           data=model[0]).pack()))
-    kb.row(types.InlineKeyboardButton(text="В меню", callback_data='backMain'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
 def link(url):
     kb = InlineKeyboardBuilder()
-    kb.row(types.InlineKeyboardButton(text="Перейти к объявлению", url=url, callback_data='#'))
+    kb.row(types.InlineKeyboardButton(text="🎯 Перейти к объявлению", url=url, callback_data='#'))
     return kb.as_markup()
 
 
 def back_main():
     kb = InlineKeyboardBuilder()
-    kb.row(types.InlineKeyboardButton(text="В меню", callback_data='backMain'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
@@ -82,7 +122,7 @@ def kufar_choose_brand():
         else:
             kb.add(types.InlineKeyboardButton(text=brand[0].title(), callback_data=Kufar_choose(action='kufar_brand',
                                                                                                 data=brand[0]).pack()))
-    kb.row(types.InlineKeyboardButton(text="В меню", callback_data='backMain'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
@@ -99,5 +139,5 @@ def kufar_choose_model(brand):
             kb.add(
                 types.InlineKeyboardButton(text=model[0].title(), callback_data=Kufar_choose(action='kufar_model',
                                                                                              data=model[0]).pack()))
-    kb.row(types.InlineKeyboardButton(text="В меню", callback_data='backMain'))
+    kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()

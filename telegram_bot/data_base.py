@@ -14,11 +14,11 @@ class Connection:
             self.cur = self.con.cursor()
 
     def get_all_brands(self):
-        self.cur.execute("SELECT DISTINCT brand FROM av_info")
+        self.cur.execute("SELECT DISTINCT brand FROM av_info ORDER BY brand")
         return self.cur.fetchall()
 
     def get_model(self, brand):
-        self.cur.execute(f"SELECT DISTINCT model FROM av_info WHERE brand='{brand}'")
+        self.cur.execute(f"SELECT DISTINCT model FROM av_info WHERE brand='{brand}' ORDER BY model")
         return self.cur.fetchall()
 
     def get_ann_ids(self, model):
@@ -63,6 +63,14 @@ class User:
 
     def get_user_status(self, user_id):
         self.cur.execute(f"SELECT mailing FROM users WHERE user_id = {user_id}")
+        return self.cur.fetchone()[0]
+
+    def get_sub_status(self, user_id):
+        self.cur.execute(f"SELECT sub_status FROM users WHERE user_id = {user_id}")
+        return self.cur.fetchone()[0]
+
+    def get_avg_price(self, brand, model):
+        self.cur.execute(f"SELECT AVG(price) FROM archive WHERE brand = %s AND model =%s", (brand, model))
         return self.cur.fetchone()[0]
 
 

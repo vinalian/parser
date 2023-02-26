@@ -1,5 +1,5 @@
 import requests
-from telegram_bot.data_base import Connection
+from telegram_bot.data_base import Connection, User
 import datetime
 
 
@@ -23,11 +23,14 @@ def parse_json_data(json_data):
         con.delete_ann(json_data['id'])
         return None
     message = {}
-    message['days_on_sale'] = json_data['daysOnSale']
-    message['description'] = json_data['description']
-    message['location'] = json_data['locationName']
-    message['photo'] = json_data['photos'][0]['big']['url']
-    message['price'] = json_data['price']['usd']['amount']
+    try:
+        message['description'] = json_data['description']
+    except KeyError:
+        message['description'] = 'Без описания продавца'
+    try:
+        message['photo'] = json_data['photos'][0]['big']['url']
+    except IndexError:
+        message['photo'] = None
     for i in json_data['properties']:
         match i['name']:
             case 'brand':
@@ -46,18 +49,13 @@ def parse_json_data(json_data):
                 message['drive_type'] = i['value']
     message['year'] = json_data['metadata']['year']
     message['url'] = json_data['publicUrl']
+    message['location'] = json_data['locationName']
+    message['days_on_sale'] = json_data['daysOnSale']
+    message['price'] = json_data['price']['usd']['amount']
     return message
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+def get_average_price(brand: str, model: str):
+    con = User()
+    avg_price = con.get_avg_price(brand, model)
+    return avg_price
