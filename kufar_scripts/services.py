@@ -17,6 +17,7 @@ def add_info_to_data_base(a):
     except:
         image = None
     if not brand or not model or not info:
+        print(brand, model, info)
         return None
     con = Connection()
     try:

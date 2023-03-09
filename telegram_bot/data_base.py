@@ -29,6 +29,14 @@ class Connection:
         self.cur.execute(f"DELETE FROM av_info WHERE ann_id='{ann_id}'")
         self.con.commit()
 
+    def get_all_sub_status(self):
+        self.cur.execute(f"SELECT user_id, sub_status FROM users WHERE sub_status <> '-1' and sub_status <> '0'")
+        return self.cur.fetchall()
+
+    def edit_sub_status(self, user_id, new_sub):
+        self.cur.execute(f"UPDATE users SET sub_status='{new_sub}' WHERE user_id={user_id}")
+        self.con.commit()
+
 
 class Connection_kufar:
     def __init__(self):
@@ -108,3 +116,15 @@ class User:
         new_data = data + f"{brand}*"
         self.cur.execute(f"UPDATE users SET mailing_brand = '{new_data}' WHERE user_id = {user_id}")
         self.con.commit()
+
+    def get_favourites(self, user_id):
+        self.cur.execute(f"SELECT favourite FROM users WHERE user_id = {user_id}")
+        return self.cur.fetchone()[0]
+
+    def update_favourites(self, user_id, ann_id):
+        self.cur.execute(f"UPDATE users SET favourite = '{ann_id}' WHERE user_id = {user_id}")
+        self.con.commit()
+
+    def get_kufar_fav(self, ann_id):
+        self.cur.execute(f"SELECT * FROM kufar_info WHERE car_id={int(ann_id)}")
+        return self.cur.fetchone()

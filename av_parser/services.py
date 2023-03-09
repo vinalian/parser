@@ -64,10 +64,9 @@ def add_ann_to_archive(json_data):
     ann_id = json_data['id']
     price = json_data['price']['usd']['amount']
     con = Connection()
-    print(brand, model, price, ann_id)
     if price and brand and model:
         try:
-            con.add_to_archive(brand, model, ann_id, price)
+            con.add_to_archive(brand, model, price, ann_id)
             print(f'[AV.by][INFO] {ann_id} added to archive')
         except psycopg2.errors.UniqueViolation:
             print(f'[AV.by][ERROR] {ann_id} already exists in archive')

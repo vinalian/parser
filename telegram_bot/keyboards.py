@@ -31,15 +31,20 @@ class Mailing_brand(CallbackData, prefix='d'):
     brand: str
 
 
+class Add_fav(CallbackData, prefix='f'):
+    action: str
+    ann_id: str
+
+
 def main(user_status):
     kb = InlineKeyboardBuilder()
     kb.row(types.InlineKeyboardButton(text="🚗 av.by", callback_data='av.by'))
     kb.row(types.InlineKeyboardButton(text="🚗 kufar", callback_data='kufar'))
     kb.row(types.InlineKeyboardButton(text="📩 Личный кабинет", callback_data='user_menu'))
     if user_status == 0:
-        kb.row(types.InlineKeyboardButton(text="✅ Рассылка выключена", callback_data='on_mailing'))
+        kb.row(types.InlineKeyboardButton(text="❌ Рассылка выключена", callback_data='on_mailing'))
     else:
-        kb.row(types.InlineKeyboardButton(text="❌ Рассылка включена", callback_data='off_mailing'))
+        kb.row(types.InlineKeyboardButton(text="✅ Рассылка включена", callback_data='off_mailing'))
     return kb.as_markup()
 
 
@@ -71,8 +76,7 @@ def sub_time(subscription):
 def choose_payment_sub():
     kb = InlineKeyboardBuilder()
     kb.row(types.InlineKeyboardButton(text="Банковский перевод", callback_data='bank_transfer'))
-    kb.row(types.InlineKeyboardButton(text="Qiwi", callback_data='qiwi'))
-    kb.row(types.InlineKeyboardButton(text="Yoomoney", callback_data='Yoomoney'))
+    kb.row(types.InlineKeyboardButton(text="ЮKassa", callback_data='YKassa'))
     kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
@@ -84,20 +88,20 @@ def confirm_sub():
     return kb.as_markup()
 
 
-def confirm_bank_transfer(time, id):
+def confirm_bank_transfer(time, user_id):
     kb = InlineKeyboardBuilder()
     kb.row(types.InlineKeyboardButton(text="Подтвердить оплату",
                                       callback_data=Confirm_bank_transfer(
                                                                           action='BankTrC',
                                                                           time=time,
-                                                                          id=id).pack()))
+                                                                          id=user_id).pack()))
     return kb.as_markup()
 
 
 def mailing_user_settings():
     kb = InlineKeyboardBuilder()
-    kb.row(types.InlineKeyboardButton(text="Настройки цены", callback_data='mailing_price'))
-    kb.row(types.InlineKeyboardButton(text="Избранные бренды", callback_data='mailing_brand'))
+    kb.row(types.InlineKeyboardButton(text="⚙️ Настройки цены", callback_data='mailing_price'))
+    kb.row(types.InlineKeyboardButton(text="⚙️ Избранные бренды", callback_data='mailing_brand'))
     kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
@@ -112,12 +116,12 @@ def mailing_brand(user_id):
                                               callback_data=Mailing_brand(action='del', brand=brand).pack()))
     except AttributeError:
         pass
-    kb.row(types.InlineKeyboardButton(text="Добавить бренд", callback_data='add_to_favourites'))
+    kb.row(types.InlineKeyboardButton(text="Добавить бренд", callback_data='add_to_mailing'))
     kb.row(types.InlineKeyboardButton(text="🔙 В меню", callback_data='backMain'))
     return kb.as_markup()
 
 
-def add_to_favourites(user_id):
+def add_to_mailing(user_id):
     kufar_con = DB.Connection_kufar()
     kufar_data = kufar_con.get_all_brands()
     av_con = DB.Connection()
@@ -175,8 +179,20 @@ def av_choose_model(brand):
     return kb.as_markup()
 
 
-def link(url):
+def link(url, ann_id):
     kb = InlineKeyboardBuilder()
+    kb.row(types.InlineKeyboardButton(text="🌟 Добавить в избранное",
+                                      callback_data=Add_fav(action='add_to_fav',
+                                                            ann_id=ann_id).pack()))
+    kb.row(types.InlineKeyboardButton(text="🎯 Перейти к объявлению", url=url, callback_data='#'))
+    return kb.as_markup()
+
+
+def fav_link(url, ann_id):
+    kb = InlineKeyboardBuilder()
+    kb.row(types.InlineKeyboardButton(text="🌟 Удалить из избранного",
+                                      callback_data=Add_fav(action='del_fav',
+                                                            ann_id=ann_id).pack()))
     kb.row(types.InlineKeyboardButton(text="🎯 Перейти к объявлению", url=url, callback_data='#'))
     return kb.as_markup()
 

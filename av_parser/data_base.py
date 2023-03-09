@@ -22,3 +22,4 @@ class Connection:
         self.cur.execute(f"INSERT INTO archive (brand, model, price, ann_id) "
                          f"VALUES (%s, %s, %s, %s)", (brand, model, price, ann_id))
         self.con.commit()
+

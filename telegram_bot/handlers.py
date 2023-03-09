@@ -14,7 +14,8 @@ from run_bot import bot
 from states import Sub_paying, Edit_mailing_price
 from telegram_bot import data_base as DB
 from telegram_bot import keyboards as KB
-from telegram_bot.services import generate_message
+from telegram_bot.services import generate_message, generate_ann
+from aiogram.types import LabeledPrice, PreCheckoutQuery
 
 router = Router()
 
@@ -132,16 +133,86 @@ async def edit_mailing_price(message: types.Message, state: FSMContext):
 async def favourites(call: types.CallbackQuery):
     con = DB.User()
     user_status = con.get_sub_status(call.from_user.id)
+    favourite = con.get_favourites(call.from_user.id)
     if user_status != '0' and user_status != '-1':
         await call.message.edit_text(
             'Вот ваши избранные объявления:\n',
             reply_markup=KB.back_main()
         )
+        if favourite:
+            for item in favourite.split('*')[:-1]:
+                data = await generate_message(item.split('-')[1])
+                if item.split('-')[0] == 'AV':
+                    text = generate_ann(data[0])
+                    if len(text) == 3:
+                        await call.message.answer_photo(
+                            photo=text[1],
+                            caption=text[0],
+                            reply_markup=KB.fav_link(url=text[2],
+                                                     ann_id=f"AV-{text[2].split('/')[-1]}")
+                        )
+                        await asyncio.sleep(1)
+                    elif len(text) == 2:
+                        await call.message.answer(
+                            text=text[0],
+                            reply_markup=KB.fav_link(url=text[1],
+                                                     ann_id=f"AV-{text[2].split('/')[-1]}")
+                        )
+                        await asyncio.sleep(1)
+                elif item.split('-')[0] == 'Kufar':
+                    info = con.get_kufar_fav(item.split('-')[1])
+                    if info[-2] != 'None':
+                        await call.message.answer_photo(
+                            photo=info[-2],
+                            caption=f'➧ Автомобиль: {info[1]}\n'
+                                    f'➧ Краткая информация: {info[4]}\n'
+                                    f'➧ Год: {info[5]}\n'
+                                    f'➧ Пробег: {info[6]}\n'
+                                    f'➧ Цена: {info[7].split(".")[1][:-2]}\n'
+                                    f'➧ Город: {info[8]}\n',
+                            reply_markup=KB.fav_link(url=info[-3],
+                                                     ann_id=f"Kufar-{info[-3].split('/')[-1].split('?')[0]}")
+                        )
+                        await asyncio.sleep(1)
+                    else:
+                        await call.message.answer(
+                            text=f'😞 Фото отсутствует :(\n\n'
+                                 f'➧ Автомобиль {info[1]}\n'
+                                 f'➧ Краткая информация: {info[4]}\n'
+                                 f'➧ Год {info[5]}\n'
+                                 f'➧ Пробег {info[6]}\n'
+                                 f'➧ Цена: {info[7].split(".")[1][-2]}\n'
+                                 f'➧ Город: {info[8]}\n',
+                            reply_markup=KB.fav_link(url=info[-3],
+                                                     ann_id=f"Kufar-{info[-3].split('/').split('?')[0]}"))
+                        await asyncio.sleep(1)
+            await call.message.answer(
+                'Это все ваши избранные объявления!\n',
+                reply_markup=KB.back_main()
+            )
     else:
         await call.answer(
             'Доступно только с подпиской!\n',
             show_alert=True
         )
+
+
+@router.callback_query(KB.Add_fav.filter(F.action == 'del_fav'))
+async def del_fav(call: types.CallbackQuery, callback_data: KB.Add_fav):
+    con = DB.User()
+    data = con.get_favourites(call.from_user.id)
+    try:
+        con.update_favourites(call.from_user.id, f'{data.replace(f"{callback_data.ann_id}*", "")}')
+        await call.answer(
+            'Удалено!',
+            show_alert=True
+        )
+    except:
+        await call.answer(
+            'Произошла ошибка!',
+            show_alert=True
+        )
+        con.con.close()
 
 
 @router.callback_query(Text('buy_sub'))
@@ -185,6 +256,40 @@ async def bank_transfer(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(Sub_paying.secret_key)
 
 
+@router.callback_query(Text('YKassa'))
+async def YKassa(call: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await bot.send_invoice(
+        chat_id=call.from_user.id,
+        title=f'Покупка подписки на {data["time"]} дней',
+        description='Покупка подписки в телеграмм боте по парсингу объявлений',
+        provider_token=settings.YKassa,
+        currency='rub',
+        prices=[
+            LabeledPrice(
+                label=f'{data["time"]} дней подписки',
+                amount=data['price']*100*26,
+            ),
+            LabeledPrice(
+                label='НДС',
+                amount=data['price']*100*26/100*5
+            ),
+        ],
+        start_parameter='Vios23',
+        payload=f'{data["time"]}*'
+                f'{call.from_user.id}',
+        protect_content=True,
+        request_timeout=15
+    )
+
+
+@router.pre_checkout_query()
+async def pre_checkout(pre_checkout_query: types.PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+    con = DB.User()
+    con.add_sub(pre_checkout_query.from_user.id, int(pre_checkout_query.invoice_payload.split('*')[0]))
+
+
 @router.callback_query(Text('confirm_sub'))
 async def confirm_sub(call: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -224,14 +329,14 @@ async def mailing_brand(call: types.CallbackQuery):
     )
 
 
-@router.callback_query(Text('add_to_favourites'))
-async def add_to_favourites(call: types.CallbackQuery):
+@router.callback_query(Text('add_to_mailing'))
+async def add_brand_to_mailing(call: types.CallbackQuery):
     con = DB.User()
     mailing_len_brand = con.get_mailing_brand(call.from_user.id).split('*')
     if len(mailing_len_brand) < 6:
         await call.message.edit_text(
             'Выберите бренд для добавления в избранное',
-            reply_markup=KB.add_to_favourites(call.from_user.id)
+            reply_markup=KB.add_to_mailing(call.from_user.id)
         )
     else:
         await call.answer(
@@ -285,45 +390,54 @@ async def av_choose_model(call: types.CallbackQuery, callback_data: KB.Av_choose
     await call.message.edit_text(
         'Вот свежие модели:'
     )
-    for info in data:
-        if info:
-            if info['photo']:
+    if data:
+        for info in data:
+            text = generate_ann(info)
+            if len(text) == 3:
                 await call.message.answer_photo(
-                    photo=info['photo'],
-                    caption=f'➧ {info["brand"]} {info["model"]} {info["year"]}г\n'
-                            f'➧ Двигатель: {info["engine_type"]}\n'
-                            f'➧ Пробег {info["mileage_kb"]} km\n'
-                            f'➧ Коробка: {info["transmission"]}\n'
-                            f'➧ Кузов: {info["body_type"]}\n'
-                            f'➧ Привод:{info["drive_type"]}\n'
-                            f'➧ г.{info["location"]}\n'
-                            f'➧ 💵 {info["price"]}$\n'
-                            f'➧ Дней на продаже: {info["days_on_sale"]} \n'
-                            f'➧ {info["description"][:300]}...',
-                    reply_markup=KB.link(info["url"])
+                    photo=text[1],
+                    caption=text[0],
+                    reply_markup=KB.link(url=text[2],
+                                         ann_id=f"AV-{text[2].split('/')[-1]}")
+                )
+                await asyncio.sleep(1)
+            elif len(text) == 2:
+                await call.message.answer(
+                    text=text[0],
+                    reply_markup=KB.link(text[1],
+                                         ann_id=f"AV-{text[2].split('/')[-1]}")
                 )
                 await asyncio.sleep(1)
             else:
-                await call.message.answer(
-                       text=f'➧ 😞 Фото отсутствует\n'
-                            f'➧ {info["brand"]} {info["model"]} {info["year"]}г\n'
-                            f'➧ Двигатель: {info["engine_type"]}\n'
-                            f'➧ Пробег {info["mileage_kb"]} km\n'
-                            f'➧ Коробка: {info["transmission"]}\n'
-                            f'➧ Кузов: {info["body_type"]}\n'
-                            f'➧ Привод:{info["drive_type"]}\n'
-                            f'➧ г.{info["location"]}\n'
-                            f'➧ 💵 {info["price"]}$\n'
-                            f'➧ Дней на продаже: {info["days_on_sale"]} \n'
-                            f'➧ {info["description"][:300]}...',
-                       reply_markup=KB.link(info["url"])
-                )
-                await asyncio.sleep(1)
-
+                pass
     await call.message.answer(
         'Это все объявления по вашей модели',
         reply_markup=KB.back_main()
     )
+
+
+@router.callback_query(KB.Add_fav.filter(F.action == 'add_to_fav'))
+async def add_to_favourites(call: types.CallbackQuery, callback_data: KB.Add_fav):
+    con = DB.User()
+    data = con.get_favourites(user_id=call.from_user.id)
+    if len(data.split('*')) <= 10:
+        if callback_data.ann_id not in data:
+            data += f'{callback_data.ann_id}*'
+            con.update_favourites(user_id=call.from_user.id, ann_id=data)
+            await call.answer(
+                'Добавлено в избранное',
+                show_alert=True
+            )
+        else:
+            await call.answer(
+                'Уже в избранном!',
+                show_alert=True
+            )
+    else:
+        await call.answer(
+            'Вы достигли лимита в 10 объявлений!',
+            show_alert=True
+        )
 
 
 @router.callback_query(Text('kufar'))
@@ -359,8 +473,10 @@ async def av_choose_model(call: types.CallbackQuery, callback_data: KB.Av_choose
                         f'➧ Пробег: {info[6]}\n'
                         f'➧ Цена: {info[7].split(".")[1][:-2]}\n'
                         f'➧ Город: {info[8]}\n',
-                reply_markup=KB.link(info[-3])
+                reply_markup=KB.link(url=info[-3],
+                                     ann_id=f"Kufar-{info[-3].split('/')[-1].split('?')[0]}")
             )
+            await asyncio.sleep(1)
         else:
             await call.message.answer(
                 text=f'😞 Фото отсутствует :(\n\n'
@@ -370,8 +486,9 @@ async def av_choose_model(call: types.CallbackQuery, callback_data: KB.Av_choose
                      f'➧ Пробег {info[6]}\n'
                      f'➧ Цена: {info[7].split(".")[1][-2]}\n'
                      f'➧ Город: {info[8]}\n',
-                reply_markup=KB.link(info[-3])
-            )
+                reply_markup=KB.link(info[-3],
+                                     ann_id=f"Kufar-{info[-3].split('/').split('?')[0]}"))
+            await asyncio.sleep(1)
     await call.message.answer(
         'Это все объявления по вашей модели',
         reply_markup=KB.back_main()

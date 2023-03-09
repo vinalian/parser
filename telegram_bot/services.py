@@ -1,24 +1,32 @@
 import requests
 from telegram_bot.data_base import Connection, User
 import datetime
+from threading import Timer
 
 
 async def generate_message(ann_ids):
     all_messages = []
-    for ann_id in ann_ids:
-        all_messages.append(parse_json_data(requests.get('https://api.av.by/offers/' + ann_id[0],
+    if type(ann_ids) == list:
+        for ann_id in ann_ids:
+            all_messages.append(parse_json_data(requests.get('https://api.av.by/offers/' + ann_id[0],
+                                                             headers={'User-Agent': 'Mozilla/5'}).json()))
+    else:
+        all_messages.append(parse_json_data(requests.get('https://api.av.by/offers/' + ann_ids,
                                                          headers={'User-Agent': 'Mozilla/5'}).json()))
     return all_messages
 
 
 def parse_json_data(json_data):
-    if json_data['status'] != 'active':
-        con = Connection()
-        con.delete_ann(json_data['id'])
+    try:
+        if json_data['status'] != 'active':
+            con = Connection()
+            con.delete_ann(json_data['id'])
+            return None
+    except KeyError:
         return None
     now = datetime.datetime.now()
     ann_date = datetime.datetime.strptime(json_data["refreshedAt"], '%Y-%m-%dT%H:%M:%S+0000')
-    if (now-ann_date).days > 15:
+    if (now - ann_date).days > 15:
         con = Connection()
         con.delete_ann(json_data['id'])
         return None
@@ -59,3 +67,45 @@ def get_average_price(brand: str, model: str):
     con = User()
     avg_price = con.get_avg_price(brand, model)
     return avg_price
+
+
+def generate_ann(info):
+    ready_message = []
+    if info:
+        if info['photo']:
+            ready_message.append(f'➧ {info["brand"]} {info["model"]} {info["year"]}г\n'
+                                 f'➧ Двигатель: {info["engine_type"]}\n'
+                                 f'➧ Пробег {info["mileage_kb"]} km\n'
+                                 f'➧ Коробка: {info["transmission"]}\n'
+                                 f'➧ Кузов: {info["body_type"]}\n'
+                                 f'➧ Привод:{info["drive_type"]}\n'
+                                 f'➧ г.{info["location"]}\n'
+                                 f'➧ 💵 {info["price"]}$\n'
+                                 f'➧ Дней на продаже: {info["days_on_sale"]} \n'
+                                 f'➧ {info["description"][:300]}...', )
+            ready_message.append(info['photo'])
+            ready_message.append(info['url'])
+        else:
+            ready_message.append(f'➧ 😞 Фото отсутствует\n'
+                                 f'➧ {info["brand"]} {info["model"]} {info["year"]}г\n'
+                                 f'➧ Двигатель: {info["engine_type"]}\n'
+                                 f'➧ Пробег {info["mileage_kb"]} km\n'
+                                 f'➧ Коробка: {info["transmission"]}\n'
+                                 f'➧ Кузов: {info["body_type"]}\n'
+                                 f'➧ Привод:{info["drive_type"]}\n'
+                                 f'➧ г.{info["location"]}\n'
+                                 f'➧ 💵 {info["price"]}$\n'
+                                 f'➧ Дней на продаже: {info["days_on_sale"]} \n'
+                                 f'➧ {info["description"][:300]}...', )
+            ready_message.append(info['url'])
+    return ready_message
+
+
+def sup_status_editor():
+    con = Connection()
+    all_subs = con.get_all_sub_status()
+    for sub in all_subs:
+        con.edit_sub_status(user_id=sub[0],
+                            new_sub=str(int(sub[1]) - 1))
+
+    Timer(60*60*24, sup_status_editor).start()
